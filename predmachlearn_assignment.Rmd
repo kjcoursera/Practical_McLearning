@@ -1,0 +1,90 @@
+---
+title: 'Assignment: Prediction Assignment Writeup'
+output: 
+  html_document: 
+    keep_md: yes
+date: "April 22, 2016"
+---
+
+### Background 
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. 
+
+In this project, the goal is to build a model for the feature "classe" variable, discuss the model accuracy and apply to the test data set of twenty specific cases. 
+
+The data is from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+
+### Data Preprocessing
+
+Download the data
+```{r,cache=TRUE}
+# Download the files
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile = "./pml-training.csv")
+download.file("http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", destfile = "./pml-testing.csv")
+```
+
+Read the training data
+```{r,cache=TRUE}
+pmlTrain_raw <- read.csv("pml-training.csv",header = TRUE,na.strings = c("NA","NULL",""))
+dim(pmlTrain_raw)
+```
+
+Removing NA's and the columns not necessary for processing
+```{r,cache=TRUE}
+# removing NA's
+pmlTrain_raw <- pmlTrain_raw[,colSums(is.na(pmlTrain_raw))==0]
+
+# removing unwanted columns
+pmlTrain <- pmlTrain_raw[,-(1:7)]
+```
+
+Set the seed
+```{r,cache=TRUE}
+set.seed(12345)
+```
+
+We now split the dataset into a training dataset (70% of the observations) and a validation dataset (30% of the observations) using the caret function. 
+
+```{r,cache=TRUE}
+library(caret)
+inTrain <- createDataPartition(y=pmlTrain$classe, p=0.7, list=FALSE)
+training <- pmlTrain[inTrain,]
+testing <- pmlTrain[-inTrain,]
+dim(training)
+dim(testing)
+```
+
+
+
+Training with RANDOM FOREST :This is supervised learning classification problem. 
+
+```{r,cache=TRUE} 
+ctrl <- trainControl(allowParallel = T, method = "cv",number = 5)
+model.rf <- train(classe ~ ., data = training,model="rf",trControl = ctrl)
+```
+
+
+
+
+```{r,cache=TRUE} 
+pred.rf <- predict(model.rf,newdata = testing)
+confusionMatrix(testing$classe,pred.rf)
+```
+
+The estimated accuracy of the model is `r sum(pred.rf == testing$classe) / length(pred.rf) * 100 `%
+
+The most important variables in the model:
+
+```{r,cache=TRUE} 
+varImp(model.rf)
+```
+
+### Predicting on Test Data set:
+As can be seen from the confusion matrix the above model is very accurate. Now we will apply to the test dataset
+
+```{r,cache=TRUE} 
+pmlTest <-   read.csv("pml-testing.csv",header = TRUE,na.strings = c("NA","NULL","")) 
+pred.test <- predict(model.rf,newdata=pmlTest)
+pred.test
+```
+
